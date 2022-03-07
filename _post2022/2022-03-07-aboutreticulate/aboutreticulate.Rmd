@@ -1,0 +1,173 @@
+---
+title: "Not 'R or Python' but 'R and Python'!"
+description: |
+  Demonstration of Reticulate package to show seamless, high-performance interoperability between R and Python.
+author:
+  - name: Sanjay Hamal
+date: 2022-03-07
+output:
+  distill::distill_article:
+    self_contained: false
+---
+
+##### Before going through this article, you should have some basic knowledge of R programming, Python programming(Pandas), R Studio and R markdown.
+
+---
+There always seems to be a perennial debate on which programming language is better. Both languages, R and Python, have their own communities and support groups. None of them are wrong. R and Python both have their own pros and cons and each language is better suited for different scenarios. Rather than debating on which language is better, in my opinion, we should try to incorporate both languages in our work. That is where "Reticulate" package becomes handy. Similar kinds of libraries(rpy2) are available in Python to incorporate R in Python and in R, other packages are also available.
+---
+
+##### Let's get started. You need to install Reticulate package [Installation and setup](https://rstudio.github.io/reticulate/) and install Pandas [Installing python packages](https://rstudio.github.io/reticulate/articles/python_packages.html) first.
+
+------------------------------------------------------------------------
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+##### The first step is loading your library(**reticulate**) and setting path to a 'conda' executable. In this case, appropriate 'conda' is automatically set. To know more, execute **?reticulate** and **?conda_python** in your R console.
+
+##### Note: Rmarkdown can execute both R and Python codes. R codes are enclosed in **`{r}`** chunk and python codes are enclosed in **`{python}`** chunk.
+
+```{r }
+#R code
+
+library(reticulate)
+conda_python()
+
+```
+
+------------------------------------------------------------------------
+
+##### Lets load a csv file [cars.csv](https://github.com/sanjayhamal/Files-for-you/blob/main/cars.csv) . I already have a "cars.csv" file in the given path below. You can also load any csv file you want.
+
+```{python echo=TRUE}
+#Python code
+
+import pandas as pd
+car_python = pd.read_csv("cars.csv")
+car_python.head(n=10)
+
+```
+
+------------------------------------------------------------------------
+
+##### Adding a new column "speed_categories" using python in "car_python" dataframe to give categories to speed.
+
+```{python echo=TRUE}
+
+#Python code
+
+car_python["Speed_category"]= ""
+
+for i in range(len(car_python)):
+  if car_python.loc[i, "speed"]>0 and car_python.loc[i,"speed"]<=10:
+    car_python.loc[i, "Speed_category"]= "Low speed"
+  elif car_python.loc[i, "speed"]>10 and car_python.loc[i, "speed"]<20:
+    car_python.loc[i, "Speed_category"]= "Medium speed"  
+  else:
+    car_python.loc[i, "Speed_category"]= "High speed"
+
+car_python.head(n=10)
+
+```
+
+------------------------------------------------------------------------
+
+##### How to convert dataframe in python to dataframe in R? Use function: "py\$name_of_dataframe"
+
+```{r}
+#R code
+
+R_cars<- py$car_python 
+
+head(R_cars, n=4)
+```
+
+------------------------------------------------------------------------
+
+##### How to source Python code and use it in R?
+
+I have a file [time.py](https://github.com/sanjayhamal/Files-for-you/blob/main/time.py), which contains the following python function to convert speed and distance to time. In the next step, I'll show how to use the time() function from "time.py" file to our R code :
+
+```{python}
+# time.py 
+def time(DIST, SPEED):
+  return DIST/SPEED
+```
+
+------------------------------------------------------------------------
+
+##### You can source python files using source_python() and use the functions from python files directly to your R code.
+
+```{r}
+#R code
+
+source_python("time.py")
+
+for(i in seq(nrow(R_cars))){
+  
+  R_cars[i, "Time"]= 
+    time(R_cars[i, "dist"], R_cars[i, "speed"])
+  
+}
+
+head(R_cars)
+
+```
+
+------------------------------------------------------------------------
+
+##### How to convert dataframe in R to dataframe in Python? You can use "r.name_of_dataframe" function.
+
+```{python}
+#Python code
+
+python_cars2 = r.R_cars   
+
+python_cars2.head(n=5)
+
+```
+
+------------------------------------------------------------------------
+
+##### Using python data frame to create graph in R using ggplot2 and ggplotly.
+
+```{r,  message=FALSE, warning=FALSE}
+
+library(ggplot2)
+library(plotly)
+
+my_plt<- ggplot(data = py$python_cars2,
+                aes(speed, dist))+
+  geom_point(aes( color= Speed_category, shape= Speed_category))+
+  geom_line(color= 'orange', alpha=0.5, linetype='dashed')+
+  geom_smooth(se= F, color='red')
+
+
+
+my_plt %>% ggplotly()
+
+```
+
+------------------------------------------------------------------------
+
+##### Using python data frame to create 3D graphs in R.
+
+```{r}
+# R code
+
+my_plot3<-plot_ly(data = py$python_cars2,
+                  x=~speed,
+                  y=~dist,
+                  z=~Time) %>% 
+  add_markers(color= ~Speed_category)
+
+my_plot3
+```
+
+---
+
+##### To learn more about Reticulate package, visit  [Reticulate](https://rstudio.github.io/reticulate/).
+
